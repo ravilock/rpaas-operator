@@ -80,6 +80,7 @@ func TestRpaasConfigurationRenderer_Render(t *testing.T) {
 				Config: &v1alpha1.NginxConfig{
 					CacheEnabled:  v1alpha1.Bool(true),
 					CachePath:     "/path/to/cache/dir",
+					CacheKey:      "${scheme}${host}${request_uri}",
 					CacheZoneSize: &size100MB,
 				},
 				Instance: &v1alpha1.RpaasInstance{},
@@ -87,6 +88,7 @@ func TestRpaasConfigurationRenderer_Render(t *testing.T) {
 			assertion: func(t *testing.T, result string) {
 				assert.Regexp(t, `proxy_cache_path /path/to/cache/dir/nginx levels=1:2 keys_zone=rpaas:104857600;`, result)
 				assert.Regexp(t, `proxy_temp_path /path/to/cache/dir/nginx_tmp 1 2;`, result)
+				assert.Regexp(t, `proxy_cache_key \$scheme\$host\$request_uri;`, result)
 				assert.Regexp(t, `server {
 \s+listen 8800;
 \s+location ~ \^/purge/\(\.\+\) {
@@ -653,7 +655,6 @@ func TestRpaasConfigurationRenderer_Render(t *testing.T) {
 \s+server_name blog.example.com;
 \s+ssl_certificate     certs/my-cert-01/tls.crt;
 \s+ssl_certificate_key certs/my-cert-01/tls.key;`, result)
-
 			},
 		},
 	}
@@ -798,7 +799,7 @@ func TestK8sQuantityToNginx(t *testing.T) {
 func TestSemanticCompare(t *testing.T) {
 	tpl := `{{ .Plan.Spec.Image | splitList ":" | last | splitList "-" | first | semverCompare ">= 1.26.3" }}`
 
-	var parsedTpl = template.Must(template.New("main").
+	parsedTpl := template.Must(template.New("main").
 		Funcs(templateFuncs).
 		Parse(tpl))
 
