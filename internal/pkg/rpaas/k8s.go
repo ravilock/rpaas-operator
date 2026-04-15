@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/url"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
@@ -1486,13 +1487,13 @@ func (m *k8sRpaasManager) validateFlavors(ctx context.Context, instance *v1alpha
 
 func diffFlavors(existing, updated []string) (added, removed []string) {
 	for _, f := range updated {
-		if !contains(existing, f) {
+		if !slices.Contains(existing, f) {
 			added = append(added, f)
 		}
 	}
 
 	for _, f := range existing {
-		if !contains(updated, f) {
+		if !slices.Contains(updated, f) {
 			removed = append(removed, f)
 		}
 	}
@@ -1503,7 +1504,7 @@ func diffFlavors(existing, updated []string) (added, removed []string) {
 func checkForIncompatibleFlavors(incompatibleFlavors, allFlavors []string, checkedFlavor string) error {
 	if len(incompatibleFlavors) > 0 {
 		for _, incompatibleFlavor := range incompatibleFlavors {
-			if contains(allFlavors, incompatibleFlavor) {
+			if slices.Contains(allFlavors, incompatibleFlavor) {
 				return &ValidationError{
 					Msg: fmt.Sprintf("flavor %q is incompatible with %q flavor", checkedFlavor, incompatibleFlavor),
 				}
@@ -2541,7 +2542,7 @@ func certificateName(name string) string {
 	return strings.ToLower(strings.TrimLeft(name, `*.`))
 }
 
-func publicKeySize(publicKey interface{}) (keySize int) {
+func publicKeySize(publicKey any) (keySize int) {
 	switch pk := publicKey.(type) {
 	case *rsa.PublicKey:
 		keySize = pk.Size() * 8 // convert bytes to bits
@@ -2553,27 +2554,14 @@ func publicKeySize(publicKey interface{}) (keySize int) {
 
 func hasIntersection(a []string, b []string) bool {
 	for _, x := range a {
-		for _, y := range b {
-			if x == y {
-				return true
-			}
+		if slices.Contains(b, x) {
+			return true
 		}
 	}
-
 	return false
 }
 
 func podIsAllowedToFail(pod corev1.Pod) bool {
 	reason := strings.ToLower(pod.Status.Reason)
 	return pod.Status.Phase == corev1.PodFailed && podAllowedReasonsToFail[reason]
-}
-
-func contains(ss []string, s string) bool {
-	for i := range ss {
-		if ss[i] == s {
-			return true
-		}
-	}
-
-	return false
 }
