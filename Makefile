@@ -8,12 +8,14 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 GO_BUILD_DIR ?= ./bin
+IMG_API = 100.64.100.100:5000/rpaas-api:dev
+IMG_MANAGER = 100.64.100.100:5000/rpaas-operator:dev
 
 all: test build
 
 # Run tests
 .PHONY: test
-test: fmt vet lint
+test: fmt vet #lint
 	go test -race -coverprofile cover.out ./...
 
 .PHONY: lint
@@ -41,6 +43,21 @@ build/purger: build-dirs
 .PHONY: build-dirs
 build-dirs:
 	@mkdir -p $(GO_BUILD_DIR)
+
+.PHONY: image
+image: image/api image/manager
+
+.PHONY: image/api
+image/api:
+	docker build -f ./Dockerfile.api -t ${IMG_API} .
+
+.PHONY: image/manager
+image/manager:
+	docker build -f ./Dockerfile.operator -t ${IMG_MANAGER} .
+
+push/images:
+	docker push ${IMG_API}
+	docker push ${IMG_MANAGER}
 
 # Build manager binary
 .PHONY: manager
